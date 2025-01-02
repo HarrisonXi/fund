@@ -1,8 +1,7 @@
-import os, sys
-import json
-import numpy as np
+import sys, json
 import pandas as pd
-from common import request
+from common import request, readCache, writeCache
+from io import StringIO
 from fundClass import fund
 from fundHistory import day2int
 from datetime import date, timedelta, datetime
@@ -11,26 +10,21 @@ from dateutil.relativedelta import relativedelta
 pd.set_option('display.unicode.ambiguous_as_wide', True)
 pd.set_option('display.unicode.east_asian_width', True)
 
-def requestFundList():
-    print('requesting fund list')
-    response = request('http://fund.eastmoney.com/js/fundcode_search.js')
-    array = json.loads(response[8:-1])
-    df = pd.DataFrame(array)
-    df['code'] = df[0]
-    df['name'] = df[2]
-    df['type'] = df[3]
-    df = df.drop(columns = [0,1,2,3,4])
-    df.to_csv('fund.csv', index = False)
-    return df
-
 def fundList():
-    if os.path.isfile('fund.csv'):
-        mdate = date.fromtimestamp(os.path.getmtime('fund.csv'))
-        today = date.today()
-        # 一个月只请求一次列表
-        if mdate.year == today.year and mdate.month == today.month:
-            return pd.read_csv('fund.csv', dtype = {'code': str})
-    return requestFundList()
+    cache = readCache('fundList.csv', cacheHours=30*24)
+    if cache:
+        df = pd.read_csv(StringIO(cache), dtype={'code': str})
+    else:
+        print('requesting fund list')
+        r = request('http://fund.eastmoney.com/js/fundcode_search.js')
+        array = json.loads(r[8:-1])
+        df = pd.DataFrame(array)
+        df['code'] = df[0]
+        df['name'] = df[2]
+        df['type'] = df[3]
+        df = df.drop(columns = [0,1,2,3,4])
+        writeCache('fundList.csv', df)
+    return df.reset_index(drop=True)
 
 __lastMonth = None
 def lastMonth():

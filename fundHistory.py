@@ -2,21 +2,11 @@ import os
 import json
 import pandas as pd
 import numpy as np
-from common import subText, readCache, request, writeCache
+from common import subText, readCache, request, writeCache, day2int, int2day, ts2dayStr
 from fundDrawdown import fundDrawdown
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from io import StringIO
-
-def ts2day(ts):
-    day = date.fromtimestamp(ts)
-    return day.strftime('%y%m%d')
-
-def int2day(i):
-    return date(2000 + i // 10000, i // 100 % 100, i % 100)
-
-def day2int(day):
-    return (day.year - 2000) * 10000 + day.month * 100 + day.day
 
 # 把分红和拆分处理成比率，红利再投资，用于计算累计收益
 def ratioForm(x):
@@ -38,7 +28,7 @@ def ratioForm(x):
 def bonusFrom(x):
     t = x['unitMoney']
     if len(t) > 0:
-        st = subText(t, '分红：每份派现金', '元', 1)
+        st = subText(t, '分红：每份派现金', '元')
         if st:
             return float(st) / float(x['y'])
         st = subText(t, '拆分：每份基金份额折算', '份')
@@ -61,7 +51,7 @@ class fundHistory:
         else:
             array = json.loads(str)
             df = pd.DataFrame(array)
-            df['date'] = df.apply(lambda x: int(ts2day(x['x'] / 1000)), axis = 1)
+            df['date'] = df.apply(lambda x: int(ts2dayStr(x['x'] / 1000)), axis = 1)
             df['tValue'] = df['y']
             df['tRatio'] = df.apply(ratioForm, axis = 1)
             df['tBonus'] = df.apply(bonusFrom, axis = 1)

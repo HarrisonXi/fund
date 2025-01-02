@@ -5,19 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: 当前文件",
-            "type": "python",
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
-        },
-        {
-            "name": "Python: 兴全合润",
-            "type": "python",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "args": ["163406"]
         }
     ]
 }

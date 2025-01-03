@@ -61,8 +61,11 @@ def filterFund(fund):
         # 可以成功输出文本
         if not hasValue(str(fund)):
             return False
-    except Exception as e:
-        return False
+    except ValueError as e:
+        if e.args[0] in ['no data']:
+            return False
+        else:
+            raise e
     else:
         return True
 
@@ -83,7 +86,7 @@ if __name__ == '__main__':
     else:
         code = sys.argv[1]
         row = df[df['code'] == code].iloc[0]
-        aFund = fund(row.code, row['name'], row['type'])
+        aFund = fund(row.code, row['name'], row.type)
         print('代码：{}'.format(aFund.code))
         print('名称：{}'.format(aFund.name))
         print('类型：{}'.format(aFund.type))
@@ -91,7 +94,10 @@ if __name__ == '__main__':
         print('经理：{}'.format(aFund.managers))
         print('规模：{}亿'.format(aFund.scale))
         print('股票比：{}%'.format(aFund.stockPercent))
-        (totalPercent, topIndustryPercent, topIndustry) = calcIndustry(code)
+        if '混合型' in row.type or '股票型' in row.type:
+            (totalPercent, topIndustryPercent, topIndustry) = calcIndustry(code)
+        else:
+            (totalPercent, topIndustryPercent, topIndustry) = (0, 0, 'N/A')
         print(f'前十持仓占比: {totalPercent}%')
         print(f'最大持仓行业: {topIndustry}')
         print(f'最大行业占比: {topIndustryPercent}%')

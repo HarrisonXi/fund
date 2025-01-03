@@ -40,7 +40,10 @@ class fund:
             managerStr = '{}等,{}'.format(self.managers[0].name, self.managers[0].year)
         else:
             managerStr = '{},{}'.format(self.managers[0].name, self.managers[0].year)
-        (totalPercent, topIndustryPercent, topIndustry) = calcIndustry(self.code)
+        if '混合型' in self.type or '股票型' in self.type:
+            (totalPercent, topIndustryPercent, topIndustry) = calcIndustry(self.code)
+        else:
+            (totalPercent, topIndustryPercent, topIndustry) = (0, 0, 'N/A')
         return '{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}'.format(
             self.code,
             self.name,
@@ -71,6 +74,8 @@ class fund:
             cachePath = f'f{self.code}.txt'
             time = datetime.now().strftime('%Y%m%d%H%M%S')
             self.__cachedText = request(f'http://fund.eastmoney.com/pingzhongdata/{self.code}.js?v={time}', cachePath=cachePath)
+            if self.__cachedText is None:
+                raise ValueError('no data')
         return self.__cachedText
 
     __returns = None
@@ -90,30 +95,40 @@ class fund:
         if not self.__scale:
             str = subText(self.__text, '/*规模变动 mom-较上期环比*/var Data_fluctuationScale = ', ';')
             if str:
-                dict = json.loads(str)['series'][-1]
-                self.__scale = dict['y']
-            else:
-                self.__scale = 0
+                series = json.loads(str)['series']
+                if series is not None and len(series) > 0:
+                    dict = series[-1]
+                    self.__scale = dict['y']
+            if self.__scale is None:
+                raise ValueError('no data')
         return self.__scale
 
     __retailPercent = None
     @property
     def retailPercent(self) -> float:
         if not self.__retailPercent:
+            self.__retailPercent = 0
             str = subText(self.__text, '/*持有人结构*/var Data_holderStructure =', ';')
             if str:
-                dict = json.loads(str)['series'][1]
-                self.__retailPercent = dict['data'][-1]
+                series = json.loads(str)['series']
+                if series is not None and len(series) > 1:
+                    dict = series[1]
+                    if dict['data'] is not None and len(dict['data']) > 0:
+                        self.__retailPercent = dict['data'][-1]
         return self.__retailPercent
 
     __stockPercent = None
     @property
     def stockPercent(self) -> float:
         if not self.__stockPercent:
+            self.__stockPercent = 0
             str = subText(self.__text, '/*资产配置*/var Data_assetAllocation = ', ';')
             if str:
-                dict = json.loads(str)['series'][0]
-                self.__stockPercent = dict['data'][-1]
+                series = json.loads(str)['series']
+                if series is not None and len(series) > 0:
+                    dict = series[0]
+                    if dict['data'] is not None and len(dict['data']) > 0:
+                        self.__stockPercent = dict['data'][-1]
         return self.__stockPercent
 
     __managers = None
@@ -144,6 +159,8 @@ class fund:
             str = subText(self.__text, '/*单位净值走势 equityReturn-净值回报 unitMoney-每份派送金*/var Data_netWorthTrend = ', ';', 1024)
             if str:
                 self.__history = fundHistory(self.code, str)
+            else:
+                raise ValueError('no data')
         return self.__history
 
 if __name__ == '__main__':

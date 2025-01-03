@@ -1,18 +1,19 @@
 import sys, json
 import pandas as pd
-from common import request, readCache, writeCache
+from common import request, readCache, writeCache, hasValue
 from io import StringIO
 from fundClass import fund
 from fundHistory import day2int
-from datetime import date, timedelta, datetime
+from datetime import date
 from dateutil.relativedelta import relativedelta
+from fundHold import calcIndustry
 
 pd.set_option('display.unicode.ambiguous_as_wide', True)
 pd.set_option('display.unicode.east_asian_width', True)
 
 def fundList():
     cache = readCache('fundList.csv', cacheHours=30*24)
-    if cache:
+    if cache is not None:
         df = pd.read_csv(StringIO(cache), dtype={'code': str})
     else:
         print('requesting fund list')
@@ -41,7 +42,7 @@ def filterFund(fund):
         if fund.scale < 3:
             return False
         # 成立时间大于3年半
-        if fund.year < 3.5:
+        if fund.age < 3.5:
             return False
         # 经理中有人从业3年半以上
         hit = False
@@ -54,10 +55,13 @@ def filterFund(fund):
         # 验证下是否还在运营
         if fund.history.lastDay < lastMonth():
             return False
-        # 夏普比率
-        if fund.history.sharpe() < 0.3:
+        # 3年亏损不能超过20%
+        if fund.history.yearReturns(3) <= -20:
             return False
-    except:
+        # 可以成功输出文本
+        if not hasValue(str(fund)):
+            return False
+    except Exception as e:
         return False
     else:
         return True
@@ -65,36 +69,36 @@ def filterFund(fund):
 if __name__ == '__main__':
     df = fundList()
     if len(sys.argv) == 1:
-        csv = '代码,名称,类型,成立,经理,从业,规模,股票比,散户比,总分红,总收益,平均,夏普,回撤,H1,H2,H3,H4,H5,H6\n'
+        csv = '代码,名称,类型,运行时长,经理,从业时长,规模,股票比,前十持仓占比,最大持仓行业,最大行业占比,散户比,3年总分红,3年总收益,半年平均,半年夏普,最大回撤,H1,H2,H3,H4,H5,H6\n'
         for index, row in df.iterrows():
-            if pd.isnull(row.type) or '混合型' not in row.type and '股票型' not in row.type:
+            if pd.isna(row.type) or '混合型' not in row.type and '股票型' not in row.type and 'FOF' not in row.type:
                 continue
-            print('analyzing {}'.format(row.code), end='\r')
+            print(f'analyzing {row.code}', end='\r')
             aFund = fund(row.code, row['name'], row.type)
             if filterFund(aFund):
-                try:
-                    fundStr = str(aFund)
-                except:
-                    pass
-                else:
-                    csv = csv + fundStr + '\n'
-        with open('result.csv', 'w', encoding = 'utf-8') as f:
+                csv = csv + str(aFund) + '\n'
+        with open('result.csv', 'w', encoding='utf-8') as f:
             f.write('\ufeff')
             f.write(csv)
     else:
         code = sys.argv[1]
         row = df[df['code'] == code].iloc[0]
-        aFund = fund(row.code, row['name'])
+        aFund = fund(row.code, row['name'], row['type'])
         print('代码：{}'.format(aFund.code))
         print('名称：{}'.format(aFund.name))
-        print('时长：{}年'.format(aFund.year))
+        print('类型：{}'.format(aFund.type))
+        print('运行时长：{:.2f}年'.format(aFund.age))
         print('经理：{}'.format(aFund.managers))
         print('规模：{}亿'.format(aFund.scale))
         print('股票比：{}%'.format(aFund.stockPercent))
+        (totalPercent, topIndustryPercent, topIndustry) = calcIndustry(code)
+        print(f'前十持仓占比: {totalPercent}%')
+        print(f'最大持仓行业: {topIndustry}')
+        print(f'最大行业占比: {topIndustryPercent}%')
         print('散户比：{}%'.format(aFund.retailPercent))
-        print('总分红：{:.2f}%'.format(aFund.history.bonus(3)))
-        print('总收益：{:.2f}%'.format(aFund.history.yearReturns(3)))
-        print('平均：{:.2f}%'.format(aFund.history.mean()))
-        print('夏普：{:.2f}'.format(aFund.history.sharpe()))
-        print('回撤：{:.2f}%'.format(aFund.history.drawdown().max))
-        print('6期收益：{}'.format(', '.join(str(round(x, 2)) for x in aFund.history.halfReturnsList(6))))
+        print('3年总分红：{:.2f}%'.format(aFund.history.bonus(3)))
+        print('3年总收益：{:.2f}%'.format(aFund.history.yearReturns(3)))
+        print('半年平均：{:.2f}%'.format(aFund.history.mean()))
+        print('半年夏普：{:.2f}'.format(aFund.history.sharpe()))
+        print('最大回撤：{:.2f}%'.format(aFund.history.drawdown().max))
+        print('6期收益：{}'.format(', '.join(str(x) for x in aFund.history.halfReturnsList(6))))

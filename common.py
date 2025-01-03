@@ -10,7 +10,7 @@ def hasValue(value):
         return False
     return True
 
-def readCache(cachePath: str, cacheHours = 8) -> str:
+def readCache(cachePath: str, cacheHours = 12) -> str:
     if not hasValue(cachePath):
         return None
     cachePath = os.path.join('cache', cachePath)
@@ -34,9 +34,9 @@ def writeCache(cachePath, content):
     elif type(content) is pd.DataFrame:
         content.to_csv(cachePath, index=False)
 
-def request(url, times = 3, timeout = 3, headers = None, cookies = None, cachePath = None, cacheHours = 8) -> str:
+def request(url, times = 3, timeout = 3, headers = None, cookies = None, cachePath = None, cacheHours = 12) -> str:
     cache = readCache(cachePath, cacheHours)
-    if cache:
+    if cache is not None:
         return cache
     for i in range(times):
         try:
@@ -51,9 +51,9 @@ def request(url, times = 3, timeout = 3, headers = None, cookies = None, cachePa
                 continue
     return None
 
-def ts2dayStr(ts: float) -> str:
+def ts2day(ts: float) -> int:
     day = date.fromtimestamp(ts)
-    return day.strftime('%y%m%d')
+    return day2int(day)
 
 def int2day(i: int) -> date:
     return date(i // 10000, i // 100 % 100, i % 100)

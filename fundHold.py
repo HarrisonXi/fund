@@ -31,7 +31,8 @@ def getIndustry(code: str) -> str:
     return '未知'
 
 def requestHolds(code: str):
-    text = request(f'http://fundf10.eastmoney.com/FundArchivesDatas.aspx?type=jjcc&code={code}&topline=10&year=&month=')
+    cachePath = f'f{code}_i.txt'
+    text = request(f'http://fundf10.eastmoney.com/FundArchivesDatas.aspx?type=jjcc&code={code}&topline=10&year=&month=', cachePath=cachePath, cacheHours=30*24)
     match = tableRegex.findall(text)[0]
     match = tbodyRegex.search(match)[0]
     matches = trRegex.findall(match)
@@ -62,6 +63,7 @@ def calcIndustry(code: str, silent: bool = True):
             topIndustryPercent = industryDict[industry]
             topIndustry = industry
     ratio = 100.0 / totalPercent
+    totalPercent = round(totalPercent, 2)
     topIndustryPercent = round(topIndustryPercent * ratio, 2)
     return (totalPercent, topIndustryPercent, topIndustry)
 

@@ -1,13 +1,12 @@
 import pandas as pd
-import numpy as np
 
 class fundDrawdown:
     
-    def __init__(self, df):
+    def __init__(self, df: pd.DataFrame):
         max = 0
         drawdown = []
         for index, row in df.iterrows():
-            if row.value > max:
+            if row.value >= max:
                 max = row.value
                 dd = 0
             elif row.value < max:
@@ -17,13 +16,13 @@ class fundDrawdown:
         self.__df['drawdown'] = drawdown
 
     @property
-    def max(self):
+    def max(self) -> float:
         return self.__df['drawdown'].max()
 
     @property
-    def quantile95(self):
+    def quantile95(self) -> float:
         return self.__df['drawdown'].quantile(0.95)
 
     @property
-    def quantile9(self):
+    def quantile9(self) -> float:
         return self.__df['drawdown'].quantile(0.9)
